@@ -96,7 +96,17 @@ double getDistanceBetweenPredictedPathAndObject(
   const autoware_perception_msgs::DynamicObject & object,
   const autoware_perception_msgs::PredictedPath & path, const double start_time,
   const double end_time, const double resolution);
+/*
+double getDistanceSequenceBetweenPredictedPaths(
+  const autoware_perception_msgs::PredictedPath & path1,
+  const autoware_perception_msgs::PredictedPath & path2, const double start_time,
+  const double end_time, const double resolution);
 
+double getDistanceSequenceBetweenPredictedPathAndObject(
+  const autoware_perception_msgs::DynamicObject & object,
+  const autoware_perception_msgs::PredictedPath & path, const double start_time,
+  const double end_time, const double resolution);
+*/
 std::vector<size_t> filterObjectsByLanelets(
   const autoware_perception_msgs::DynamicObjectArray & objects,
   const lanelet::ConstLanelets & lanelets, const double start_arc_length,

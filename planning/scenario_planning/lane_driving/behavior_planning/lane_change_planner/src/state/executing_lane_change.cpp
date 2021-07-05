@@ -72,13 +72,15 @@ void ExecutingLaneChangeState::update()
 
 State ExecutingLaneChangeState::getNextState() const
 {
+  /*
   if (isAbortConditionSatisfied()) {
     if (isNearEndOfLane() && isCurrentSpeedLow()) {
       return State::STOPPING_LANE_CHANGE;
     }
     return State::FOLLOWING_LANE;
   }
-
+  */
+  ROS_INFO_STREAM("has finished lane change : " << hasFinishedLaneChange());
   if (hasFinishedLaneChange()) {
     return State::FOLLOWING_LANE;
   }

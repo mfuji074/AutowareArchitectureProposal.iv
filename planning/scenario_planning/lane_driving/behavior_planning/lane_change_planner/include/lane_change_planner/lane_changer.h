@@ -28,6 +28,7 @@
 #include <autoware_planning_msgs/PathWithLaneId.h>
 #include <autoware_planning_msgs/Route.h>
 #include <autoware_planning_msgs/StopReasonArray.h>
+#include <std_msgs/Float32MultiArray.h>
 
 #include <lane_change_planner/data_manager.h>
 #include <lane_change_planner/route_handler.h>
@@ -54,6 +55,9 @@ private:
   ros::Publisher drivable_area_publisher_;
   ros::Publisher lane_change_ready_publisher_;
   ros::Publisher lane_change_available_publisher_;
+  ros::Publisher mpdm_total_costs_publisher_;
+  ros::Publisher mpdm_efficiency_costs_publisher_;
+  ros::Publisher mpdm_safety_costs_publisher_;
 
   ros::NodeHandle pnh_;
 

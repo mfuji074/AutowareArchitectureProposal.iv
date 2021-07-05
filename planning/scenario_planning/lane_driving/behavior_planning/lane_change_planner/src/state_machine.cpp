@@ -20,6 +20,7 @@
 #include <lane_change_planner/state/following_lane.h>
 #include <lane_change_planner/state/forcing_lane_change.h>
 #include <lane_change_planner/state/stopping_lane_change.h>
+#include <lane_change_planner/state/multipolicy_decision_making.h>
 #include <lane_change_planner/state_machine.h>
 #include <ros/ros.h>
 
@@ -40,6 +41,8 @@ void StateMachine::init()
   state_obj_ptr_ =
     std::make_unique<FollowingLaneState>(empty_status, data_manager_ptr_, route_handler_ptr_);
   state_obj_ptr_->entry();
+  mpdm_ptr_ = std::make_unique<MultipolicyDecisionMaking>(empty_status, data_manager_ptr_, route_handler_ptr_);
+  mpdm_ptr_->entry();
 }
 
 void StateMachine::init(const autoware_planning_msgs::Route & route) { init(); }
@@ -48,8 +51,9 @@ void StateMachine::updateState()
 {
   // update state status
   state_obj_ptr_->update();
-  State current_state = state_obj_ptr_->getCurrentState();
-  State next_state = state_obj_ptr_->getNextState();
+  mpdm_ptr_->update();
+  State current_state = mpdm_ptr_->getCurrentState();
+  State next_state = mpdm_ptr_->getNextState();
 
   // Transit to next state
   if (next_state != current_state) {
@@ -92,7 +96,8 @@ autoware_planning_msgs::PathWithLaneId StateMachine::getPath() const
 }
 
 Status StateMachine::getStatus() const { return state_obj_ptr_->getStatus(); }
-DebugData StateMachine::getDebugData() const { return state_obj_ptr_->getDebugData(); }
+DebugData StateMachine::getDebugData() const { return mpdm_ptr_->getDebugData(); }
+//DebugData StateMachine::getDebugData() const { return state_obj_ptr_->getDebugData(); }
 State StateMachine::getState() const { return state_obj_ptr_->getCurrentState(); }
 
 }  // namespace lane_change_planner

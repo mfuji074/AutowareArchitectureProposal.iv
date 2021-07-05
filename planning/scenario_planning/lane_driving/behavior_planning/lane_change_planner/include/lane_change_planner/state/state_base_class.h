@@ -54,6 +54,9 @@ struct DebugData
   autoware_planning_msgs::PathWithLaneId selected_path;
   autoware_planning_msgs::PathPointWithLaneId stop_point;
   geometry_msgs::Point stop_factor_point;
+  std::vector<double> mpdm_total_costs;
+  std::vector<double> mpdm_safety_costs;
+  std::vector<double> mpdm_efficiency_costs;
 };
 
 class StateBase

@@ -158,6 +158,7 @@ void FollowingLaneState::update()
 
 State FollowingLaneState::getNextState() const
 {
+  /*
   if (current_lanes_.empty()) {
     ROS_ERROR_THROTTLE(1, "current lanes empty. Keeping state.");
     return State::FOLLOWING_LANE;
@@ -171,6 +172,7 @@ State FollowingLaneState::getNextState() const
   if (isLaneChangeReady() && isLaneChangeApproved()) {
     return State::EXECUTING_LANE_CHANGE;
   }
+  */
   return State::FOLLOWING_LANE;
 }
 

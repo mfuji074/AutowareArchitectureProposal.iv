@@ -445,6 +445,59 @@ double getDistanceBetweenPredictedPathAndObject(
   return min_distance;
 }
 
+/*
+std::vector<double> getDistanceSequenceBetweenPredictedPaths(
+  const PredictedPath & object_path, const PredictedPath & ego_path, const double start_time,
+  const double end_time, const double resolution)
+{
+  std::vector<double> distance_sequence;
+  ros::Duration t_delta(resolution);
+  double min_distance = std::numeric_limits<double>::max();
+  ros::Time ros_start_time = ros::Time::now() + ros::Duration(start_time);
+  ros::Time ros_end_time = ros::Time::now() + ros::Duration(end_time);
+  const auto ego_path_point_array = convertToGeometryPointArray(ego_path);
+  for (auto t = ros_start_time; t < ros_end_time; t += t_delta) {
+    geometry_msgs::Pose object_pose, ego_pose;
+    if (!lerpByTimeStamp(object_path, t, &object_pose)) {
+      continue;
+    }
+    if (!lerpByTimeStamp(ego_path, t, &ego_pose)) {
+      continue;
+    }
+    double distance = getDistance3d(object_pose.position, ego_pose.position);
+    distance_sequence.push_back(distance);
+  }
+  return distance_sequence;
+}
+
+std::vector<double> getDistanceSequenceBetweenPredictedPathAndObject(
+  const autoware_perception_msgs::DynamicObject & object, const PredictedPath & ego_path,
+  const double start_time, const double end_time, const double resolution)
+{
+  std::vector<double> distance_sequence;
+  ros::Duration t_delta(resolution);
+  double min_distance = std::numeric_limits<double>::max();
+  ros::Time ros_start_time = ros::Time::now() + ros::Duration(start_time);
+  ros::Time ros_end_time = ros::Time::now() + ros::Duration(end_time);
+  const auto ego_path_point_array = convertToGeometryPointArray(ego_path);
+  Polygon obj_polygon;
+  if (!calcObjectPolygon(object, &obj_polygon)) {
+    return min_distance;
+  }
+  for (auto t = ros_start_time; t < ros_end_time; t += t_delta) {
+    geometry_msgs::Pose ego_pose;
+    if (!lerpByTimeStamp(ego_path, t, &ego_pose)) {
+      continue;
+    }
+    Point ego_point = boost::geometry::make<Point>(ego_pose.position.x, ego_pose.position.y);
+
+    double distance = boost::geometry::distance(obj_polygon, ego_point);
+    distance_sequence.push_back(distance);
+  }
+  return distance_sequence;
+}
+*/
+
 // only works with consecutive lanes
 std::vector<size_t> filterObjectsByLanelets(
   const autoware_perception_msgs::DynamicObjectArray & objects,

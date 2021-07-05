@@ -49,6 +49,7 @@ public:
 
 private:
   std::unique_ptr<StateBase> state_obj_ptr_;
+  std::unique_ptr<StateBase> mpdm_ptr_;
   std::shared_ptr<DataManager> data_manager_ptr_;
   std::shared_ptr<RouteHandler> route_handler_ptr_;
   ros::Publisher path_marker_publisher_;

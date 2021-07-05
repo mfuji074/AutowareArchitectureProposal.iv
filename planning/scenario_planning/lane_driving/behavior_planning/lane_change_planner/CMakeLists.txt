@@ -41,6 +41,7 @@ add_executable(lane_change_planner
   src/state/blocked_by_obstacle.cpp
   src/state/stopping_lane_change.cpp
   src/state/common_functions.cpp
+  src/state/multipolicy_decision_making.cpp
 )
 add_dependencies(lane_change_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(lane_change_planner

@@ -127,6 +127,9 @@ void LaneChanger::init()
   lane_change_ready_publisher_ = pnh_.advertise<std_msgs::Bool>("output/lane_change_ready", 1);
   lane_change_available_publisher_ =
     pnh_.advertise<std_msgs::Bool>("output/lane_change_available", 1);
+  mpdm_total_costs_publisher_ = pnh_.advertise<std_msgs::Float32MultiArray>("debug/mpdm_total_costs", 1);
+  mpdm_efficiency_costs_publisher_ = pnh_.advertise<std_msgs::Float32MultiArray>("debug/mpdm_efficiency_costs", 1);
+  mpdm_safety_costs_publisher_ = pnh_.advertise<std_msgs::Float32MultiArray>("debug/mpdm_safety_costs", 1);
 
   waitForData();
 
@@ -341,11 +344,24 @@ void LaneChanger::publishDebugMarkers()
     }
   }
 
+  // mpdm costs
+  std_msgs::Float32MultiArray mpdm_total_costs, mpdm_safety_costs, mpdm_efficiency_costs;
+  {
+    for (int i = 0; i < debug_data.mpdm_total_costs.size(); i++) {
+      mpdm_total_costs.data.push_back(debug_data.mpdm_total_costs[i]);
+      mpdm_safety_costs.data.push_back(debug_data.mpdm_safety_costs[i]);
+      mpdm_efficiency_costs.data.push_back(debug_data.mpdm_efficiency_costs[i]);
+    }
+  }
+
   //create stop reason array from debug_data and state
   stop_reason_array = makeStopReasonArray(debug_data, state_machine_ptr_->getState());
 
   path_marker_publisher_.publish(debug_markers);
   stop_reason_publisher_.publish(stop_reason_array);
+  mpdm_total_costs_publisher_.publish(mpdm_total_costs);
+  mpdm_safety_costs_publisher_.publish(mpdm_safety_costs);
+  mpdm_efficiency_costs_publisher_.publish(mpdm_efficiency_costs);
 }
 
 autoware_planning_msgs::StopReasonArray LaneChanger::makeStopReasonArray(
