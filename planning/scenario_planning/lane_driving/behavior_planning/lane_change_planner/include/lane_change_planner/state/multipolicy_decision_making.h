@@ -42,7 +42,7 @@ private:
     const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
     const LaneChangerParameters & ros_parameters, const bool use_buffer);
 
-  std::vector<State> state_set_;
+  size_t change_lane_size_;
   State current_state_;
   State next_state_;
 

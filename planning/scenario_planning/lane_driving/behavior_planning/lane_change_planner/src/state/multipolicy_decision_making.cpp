@@ -112,6 +112,7 @@ void MultipolicyDecisionMaking::update()
       found_valid_path = !valid_paths.empty();
 
       // get explored_paths (valid_paths + lane_following_path)
+      change_lane_size_ = valid_paths.size();
       auto lane_follow_path = route_handler_ptr_->getLaneChangePaths(
         current_lanes_, current_lanes_, current_pose_.pose, current_twist_->twist,
         ros_parameters_);
@@ -119,7 +120,7 @@ void MultipolicyDecisionMaking::update()
       explored_paths.insert(explored_paths.end(), lane_follow_path.begin(), lane_follow_path.begin()+1);
 
       // add decelerated paths to explored_paths
-      /*
+      change_lane_size_ *= 2;
       auto explored_paths_decelerated = explored_paths;
       geometry_msgs::Twist velocity_max;
       for (size_t i = 0; i < explored_paths_decelerated.size(); i++) {
@@ -133,7 +134,6 @@ void MultipolicyDecisionMaking::update()
           explored_paths.insert(explored_paths.end(), explored_paths_decelerated[i]);
         }
       }
-      */
 
       //std::cout << "current_pose : " << current_pose_.pose << std::endl;
       //std::cout << "goal_pose : " << route_handler_ptr_->getGoalPose() << std::endl;
@@ -165,7 +165,7 @@ State MultipolicyDecisionMaking::exploreBestState(
   // parameter
   std::vector<double> costs;
   double cost_min = 1.0e10;
-  const double coeff_efficiency = 0.0;
+  const double coeff_efficiency = 1.0e-3;
 
   for (const auto & path : paths) {
     // safety
@@ -205,13 +205,12 @@ State MultipolicyDecisionMaking::exploreBestState(
 
   std::vector<double>::iterator iter = std::min_element(costs.begin(), costs.end());
   size_t index = std::distance(costs.begin(), iter);
-  std::cout << "index : " << index << ", cost_size : " << costs.size() << std::endl;
-  //if (index == (costs.size()-1) || index == (costs.size()-2)) {
-  //  return State::FOLLOWING_LANE;
-  if (index == (costs.size()-1)) {
+  std::cout << "index : " << index << " , change_lane_size : " << change_lane_size_ << " , cost size : " << costs.size() << std::endl;
+  if (index > (change_lane_size_-1)) {
     return State::FOLLOWING_LANE;
   } else {
     return State::EXECUTING_LANE_CHANGE;
+    //return State::FOLLOWING_LANE;
   }
 }
 
