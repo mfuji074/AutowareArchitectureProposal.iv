@@ -38,6 +38,10 @@ def main(case=0, no_engage=False):
     goal_pose.pose.orientation.w = 0.622552
 
     object_info = Object()
+    # header
+    object_info.header.frame_id = "map"
+    object_info.header.stamp = rospy.Time.now()
+
     # semantic
     object_info.semantic.type = Semantic.CAR
     object_info.semantic.confidence = 1.0
