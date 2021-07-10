@@ -37,7 +37,7 @@ State MultipolicyDecisionMaking::getNextState() const
 
 autoware_planning_msgs::PathWithLaneId MultipolicyDecisionMaking::getPath() const
 {
-  return status_.lane_follow_path;
+  return status_.lane_change_path.path;
 }
 
 void MultipolicyDecisionMaking::update()
@@ -192,25 +192,23 @@ State MultipolicyDecisionMaking::exploreBestState(
     debug_data_.mpdm_safety_costs.push_back(cost_safety);
     debug_data_.mpdm_efficiency_costs.push_back(cost_efficiency);
   }
-
+  /*
   std::cout << "costs : ";
   for (auto & item : costs) {
     std::cout << item << ",  ";
   }
   std::cout << std::endl;
-
+  */
   if (cost_min < 0.0) {
     return State::FOLLOWING_LANE;
   }
 
   std::vector<double>::iterator iter = std::min_element(costs.begin(), costs.end());
   size_t index = std::distance(costs.begin(), iter);
-  std::cout << "index : " << index << " , change_lane_size : " << change_lane_size_ << " , cost size : " << costs.size() << std::endl;
   if (index > (change_lane_size_-1)) {
     return State::FOLLOWING_LANE;
   } else {
     return State::EXECUTING_LANE_CHANGE;
-    //return State::FOLLOWING_LANE;
   }
 }
 
