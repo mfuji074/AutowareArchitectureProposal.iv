@@ -57,7 +57,6 @@ void StateMachine::updateState()
 
   // Transit to next state
   if (next_state != current_state) {
-    ROS_INFO_STREAM("changing state: " << current_state << " => " << next_state);
     const auto previous_status = state_obj_ptr_->getStatus();
     switch (next_state) {
       case State::FOLLOWING_LANE:
@@ -92,7 +91,7 @@ void StateMachine::updateState()
 
 autoware_planning_msgs::PathWithLaneId StateMachine::getPath() const
 {
-  return state_obj_ptr_->getPath();
+  return mpdm_ptr_->getPath();
 }
 
 Status StateMachine::getStatus() const { return state_obj_ptr_->getStatus(); }
