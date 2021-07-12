@@ -63,12 +63,10 @@ def main(case=0, no_engage=False):
     if case == 0:
         # object initial state
         # pose
-        #object_info.initial_state.pose_covariance.pose.position.x = -14.034
-        #object_info.initial_state.pose_covariance.pose.position.y = -67.625
-        object_info.initial_state.pose_covariance.pose.position.x = 81553.1
-        object_info.initial_state.pose_covariance.pose.position.y = 50100.0
+        object_info.initial_state.pose_covariance.pose.position.x = 81564.0
+        object_info.initial_state.pose_covariance.pose.position.y = 50178.0
         object_info.initial_state.pose_covariance.pose.position.z = 0.0
-        theta = 3.1415/2
+        theta = 1.75
         quat = quaternion_from_euler(0.0, 0.0, theta)
         object_info.initial_state.pose_covariance.pose.orientation = Quaternion(quat[0], quat[1], quat[2], quat[3])
 
@@ -83,13 +81,13 @@ def main(case=0, no_engage=False):
     time.sleep(1)
     goal_pub.publish(goal_pose)
 
-    time.sleep(1)
-    dummycar_pub.publish(object_info)
-
     if not no_engage:
         time.sleep(3)
         msg = Bool(data=True)
         engage_pub.publish(msg)
+
+    time.sleep(0.5)
+    dummycar_pub.publish(object_info)
 
 if __name__ == '__main__':
     case = int(sys.argv[sys.argv.index('-r') + 1]) if '-r' in sys.argv else 0
