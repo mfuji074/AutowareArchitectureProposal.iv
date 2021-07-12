@@ -52,12 +52,12 @@ void StateMachine::updateState()
   // update state status
   state_obj_ptr_->update();
   mpdm_ptr_->update();
-  State current_state = mpdm_ptr_->getCurrentState();
+  State current_state = state_obj_ptr_->getCurrentState();
   State next_state = mpdm_ptr_->getNextState();
 
   // Transit to next state
   if (next_state != current_state) {
-    const auto previous_status = state_obj_ptr_->getStatus();
+    const auto previous_status = mpdm_ptr_->getStatus();
     switch (next_state) {
       case State::FOLLOWING_LANE:
         state_obj_ptr_ = std::make_unique<FollowingLaneState>(
@@ -94,7 +94,7 @@ autoware_planning_msgs::PathWithLaneId StateMachine::getPath() const
   return mpdm_ptr_->getPath();
 }
 
-Status StateMachine::getStatus() const { return state_obj_ptr_->getStatus(); }
+Status StateMachine::getStatus() const { return mpdm_ptr_->getStatus(); }
 DebugData StateMachine::getDebugData() const { return mpdm_ptr_->getDebugData(); }
 //DebugData StateMachine::getDebugData() const { return state_obj_ptr_->getDebugData(); }
 State StateMachine::getState() const { return state_obj_ptr_->getCurrentState(); }
