@@ -51,8 +51,10 @@ void MultipolicyDecisionMaking::update()
   lanelet::ConstLanelet current_lane;
   const double backward_path_length = ros_parameters_.backward_path_length;
   const double forward_path_length = ros_parameters_.forward_path_length;
+  const double width = ros_parameters_.drivable_area_width;
+  const double height = ros_parameters_.drivable_area_height;
+  const double resolution = ros_parameters_.drivable_area_resolution;
 
-  bool found_valid_path = false;
   // update lanes
   {
     if (!route_handler_ptr_->getClosestLaneletWithinRoute(current_pose_.pose, &current_lane)) {
@@ -83,9 +85,16 @@ void MultipolicyDecisionMaking::update()
     status_.lane_follow_path = route_handler_ptr_->getReferencePath(
       current_lanes_, current_pose_.pose, backward_path_length, forward_path_length,
       ros_parameters_);
+    status_.lane_follow_path.drivable_area = util::generateDrivableArea(
+      current_lanes_, current_pose_, width, height, resolution, ros_parameters_.vehicle_length,
+      *route_handler_ptr_);
 
     if (lane_change_lanes_.empty()) {
+      status_.lane_change_path.path = status_.lane_follow_path;
       next_state_ = State::FOLLOWING_LANE;
+      status_.lane_change_ready = false;
+      status_.lane_change_available = false;
+      return;
     } else {
       // find candidate paths
       const auto lane_change_paths = route_handler_ptr_->getLaneChangePaths(
@@ -109,7 +118,6 @@ void MultipolicyDecisionMaking::update()
         current_pose_.pose, route_handler_ptr_->isInGoalRouteSection(current_lanes_.back()),
         route_handler_ptr_->getGoalPose());
       debug_data_.lane_change_candidate_paths = valid_paths;
-      found_valid_path = !valid_paths.empty();
 
       // get explored_paths (valid_paths + lane_following_path)
       change_lane_size_ = valid_paths.size();
@@ -147,6 +155,26 @@ void MultipolicyDecisionMaking::update()
     }
     status_.lane_follow_lane_ids = util::getIds(current_lanes_);
     status_.lane_change_lane_ids = util::getIds(lane_change_lanes_);
+  }
+
+  // update drivable area
+  {
+    lanelet::ConstLanelets lanes;
+    lanes.insert(lanes.end(), current_lanes_.begin(), current_lanes_.end());
+    lanes.insert(lanes.end(), lane_change_lanes_.begin(), lane_change_lanes_.end());
+    status_.lane_change_path.path.drivable_area = util::generateDrivableArea(
+      lanes, current_pose_, width, height, resolution, ros_parameters_.vehicle_length,
+      *route_handler_ptr_);
+    if (next_state_ == State::FOLLOWING_LANE)
+    {
+      status_.lane_change_ready = false;
+      status_.lane_change_available = false;
+    }
+    else if (next_state_ == State::EXECUTING_LANE_CHANGE)
+    {
+      status_.lane_change_ready = true;
+      status_.lane_change_available = true;
+    }
   }
 }
 
