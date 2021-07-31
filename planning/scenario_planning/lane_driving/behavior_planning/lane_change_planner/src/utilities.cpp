@@ -445,59 +445,6 @@ double getDistanceBetweenPredictedPathAndObject(
   return min_distance;
 }
 
-/*
-std::vector<double> getDistanceSequenceBetweenPredictedPaths(
-  const PredictedPath & object_path, const PredictedPath & ego_path, const double start_time,
-  const double end_time, const double resolution)
-{
-  std::vector<double> distance_sequence;
-  ros::Duration t_delta(resolution);
-  double min_distance = std::numeric_limits<double>::max();
-  ros::Time ros_start_time = ros::Time::now() + ros::Duration(start_time);
-  ros::Time ros_end_time = ros::Time::now() + ros::Duration(end_time);
-  const auto ego_path_point_array = convertToGeometryPointArray(ego_path);
-  for (auto t = ros_start_time; t < ros_end_time; t += t_delta) {
-    geometry_msgs::Pose object_pose, ego_pose;
-    if (!lerpByTimeStamp(object_path, t, &object_pose)) {
-      continue;
-    }
-    if (!lerpByTimeStamp(ego_path, t, &ego_pose)) {
-      continue;
-    }
-    double distance = getDistance3d(object_pose.position, ego_pose.position);
-    distance_sequence.push_back(distance);
-  }
-  return distance_sequence;
-}
-
-std::vector<double> getDistanceSequenceBetweenPredictedPathAndObject(
-  const autoware_perception_msgs::DynamicObject & object, const PredictedPath & ego_path,
-  const double start_time, const double end_time, const double resolution)
-{
-  std::vector<double> distance_sequence;
-  ros::Duration t_delta(resolution);
-  double min_distance = std::numeric_limits<double>::max();
-  ros::Time ros_start_time = ros::Time::now() + ros::Duration(start_time);
-  ros::Time ros_end_time = ros::Time::now() + ros::Duration(end_time);
-  const auto ego_path_point_array = convertToGeometryPointArray(ego_path);
-  Polygon obj_polygon;
-  if (!calcObjectPolygon(object, &obj_polygon)) {
-    return min_distance;
-  }
-  for (auto t = ros_start_time; t < ros_end_time; t += t_delta) {
-    geometry_msgs::Pose ego_pose;
-    if (!lerpByTimeStamp(ego_path, t, &ego_pose)) {
-      continue;
-    }
-    Point ego_point = boost::geometry::make<Point>(ego_pose.position.x, ego_pose.position.y);
-
-    double distance = boost::geometry::distance(obj_polygon, ego_point);
-    distance_sequence.push_back(distance);
-  }
-  return distance_sequence;
-}
-*/
-
 // only works with consecutive lanes
 std::vector<size_t> filterObjectsByLanelets(
   const autoware_perception_msgs::DynamicObjectArray & objects,
@@ -676,6 +623,68 @@ std::vector<size_t> filterObjectsByPath(
     }
   }
   return indices;
+}
+
+bool checkObjectAtSameLane(
+  const autoware_perception_msgs::DynamicObject & object, const autoware_perception_msgs::PredictedPath & object_path,
+  lanelet::routing::RoutingGraphPtr routing_graph_ptr, const lanelet::ConstLanelets & check_lanes,
+  const double length, const double start_time, const double end_time)
+{
+  auto obj = object;
+  ros::Time ros_start_time = ros::Time::now() + ros::Duration(start_time);
+  ros::Time ros_end_time = ros::Time::now() + ros::Duration(end_time);
+  std::vector<lanelet::ConstLanelets> lanelets_sequences;
+
+  for (const auto & ll : check_lanes) {
+    auto lanelet_sequences=
+      lanelet::utils::query::getPrecedingLaneletSequences(routing_graph_ptr, ll, length);
+    // Preceding lanes does not include objective_lane so add them at the end
+    lanelets_sequences.push_back({ll});
+    for (auto & l : lanelet_sequences) {
+      lanelets_sequences.push_back(l);
+    }
+  }
+
+  geometry_msgs::Pose current_object_pose, final_object_pose;
+  lerpByTimeStamp(object_path, ros_start_time, &current_object_pose);
+  lerpByTimeStamp(object_path, ros_end_time, &final_object_pose);
+
+  // create object polygon
+  Polygon current_obj_polygon, final_obj_polygon;
+  obj.state.pose_covariance.pose.position.x = current_object_pose.position.x;
+  obj.state.pose_covariance.pose.position.y = current_object_pose.position.y;
+  calcObjectPolygon(obj, &current_obj_polygon);
+  obj.state.pose_covariance.pose.position.x = final_object_pose.position.x;
+  obj.state.pose_covariance.pose.position.y = final_object_pose.position.y;
+  calcObjectPolygon(obj, &final_obj_polygon);
+
+  for (const auto & lanelets : lanelets_sequences) {
+    for (const auto & llt : lanelets) {
+      // create lanelet polygon
+      const auto polygon2d = llt.polygon2d().basicPolygon();
+      if (polygon2d.empty()) {
+        // no lanelet polygon
+        continue;
+      }
+      Polygon lanelet_polygon;
+      for (const auto & lanelet_point : polygon2d) {
+        lanelet_polygon.outer().push_back(
+          boost::geometry::make<Point>(lanelet_point.x(), lanelet_point.y()));
+      }
+
+      lanelet_polygon.outer().push_back(lanelet_polygon.outer().front());
+
+      // check the object does not intersect the lanelet
+      if (!boost::geometry::disjoint(lanelet_polygon, current_obj_polygon) ||
+          !boost::geometry::disjoint(lanelet_polygon, final_obj_polygon)) {
+        return true;
+      }
+      else {
+        continue;
+      }
+    }
+  }
+  return false;
 }
 
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)

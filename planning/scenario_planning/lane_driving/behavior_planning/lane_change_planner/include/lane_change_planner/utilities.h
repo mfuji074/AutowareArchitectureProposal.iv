@@ -96,17 +96,7 @@ double getDistanceBetweenPredictedPathAndObject(
   const autoware_perception_msgs::DynamicObject & object,
   const autoware_perception_msgs::PredictedPath & path, const double start_time,
   const double end_time, const double resolution);
-/*
-double getDistanceSequenceBetweenPredictedPaths(
-  const autoware_perception_msgs::PredictedPath & path1,
-  const autoware_perception_msgs::PredictedPath & path2, const double start_time,
-  const double end_time, const double resolution);
 
-double getDistanceSequenceBetweenPredictedPathAndObject(
-  const autoware_perception_msgs::DynamicObject & object,
-  const autoware_perception_msgs::PredictedPath & path, const double start_time,
-  const double end_time, const double resolution);
-*/
 std::vector<size_t> filterObjectsByLanelets(
   const autoware_perception_msgs::DynamicObjectArray & objects,
   const lanelet::ConstLanelets & lanelets, const double start_arc_length,
@@ -123,6 +113,11 @@ std::vector<size_t> filterObjectsByPath(
   const autoware_perception_msgs::DynamicObjectArray & objects,
   const std::vector<size_t> & object_indices,
   const autoware_planning_msgs::PathWithLaneId & ego_path, const double vehicle_width);
+
+bool checkObjectAtSameLane(
+  const autoware_perception_msgs::DynamicObject & object, const autoware_perception_msgs::PredictedPath & object_path,
+  lanelet::routing::RoutingGraphPtr routing_graph_ptr, const lanelet::ConstLanelets & check_lanes,
+  const double length, const double start_time, const double end_time);
 
 const geometry_msgs::Pose refineGoal(
   const geometry_msgs::Pose & goal, const lanelet::ConstLanelet & goal_lanelet);

@@ -146,6 +146,8 @@ public:
 
   lanelet::routing::RoutingGraphContainer getOverallGraph() const;
 
+  lanelet::routing::RoutingGraphPtr getRoutingGraphPtr() const;
+
   std::vector<lanelet::ConstLanelet> getLanesAfterGoal(const double vehicle_length) const;
 };
 }  // namespace lane_change_planner

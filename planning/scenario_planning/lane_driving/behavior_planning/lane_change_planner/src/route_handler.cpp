@@ -1008,4 +1008,9 @@ lanelet::routing::RoutingGraphContainer RouteHandler::getOverallGraph() const
   return *overall_graphs_ptr_;
 }
 
+lanelet::routing::RoutingGraphPtr RouteHandler::getRoutingGraphPtr() const
+{
+  return routing_graph_ptr_;
+}
+
 }  // namespace lane_change_planner
