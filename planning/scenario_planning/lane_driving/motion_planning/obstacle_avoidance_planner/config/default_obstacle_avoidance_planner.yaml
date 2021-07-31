@@ -1,6 +1,6 @@
 # trajectory total/fixing length
 trajectory_length: 200 # total trajectory length[m]
-forward_fixing_distance: 20.0 # forward fixing length from base_link[m]
+forward_fixing_distance: 0.1 # forward fixing length from base_link[m]
 backward_fixing_distance: 5.0 # backward fixing length from base_link[m]
 
 # clearance(distance) when generating trajectory
@@ -85,7 +85,7 @@ terminal_path_yaw_error_weight: 1000.0  # weight for yaw errro at path end point
 zero_ff_steer_angle: 0.5                # threshold that feed-forward angle becomes zero
 
 # replanning & trimming trajectory param outside algorithm
-min_delta_dist_for_replan: 10.0 # minimum delta dist thres for replan[m]
-min_delta_time_sec_for_replan: 1.0 # minimum delta time for replan[second]
+min_delta_dist_for_replan: 0.1 # minimum delta dist thres for replan[m]
+min_delta_time_sec_for_replan: 0.1 # minimum delta time for replan[second]
 max_dist_for_extending_end_point: 5.0 # minimum delta dist thres for extending last point[m]
 distance_for_path_shape_chagne_detection: 2.0 # minimum delta dist thres for detecting path shape change
