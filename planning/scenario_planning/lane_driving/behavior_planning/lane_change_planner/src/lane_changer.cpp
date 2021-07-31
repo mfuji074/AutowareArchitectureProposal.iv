@@ -90,6 +90,10 @@ void LaneChanger::init()
   pnh_.param(
     "abort_lane_change_distance_thresh", parameters.abort_lane_change_distance_thresh, 0.3);
   pnh_.param("refine_goal_search_radius_range", parameters.refine_goal_search_radius_range, 7.5);
+  // mpdm parameters
+  pnh_.param("coefficient_for_efficiency_cost", parameters.mpdm_coefficient_for_efficiency_cost, 0.001);
+  pnh_.param("coefficient_for_safety_cost", parameters.mpdm_coefficient_for_safety_cost, 0.01);
+  pnh_.param("check_lane_length", parameters.mpdm_check_lane_length, 100.0);
 
   // validation of parameters
   if (parameters.lane_change_sampling_num < 1) {
