@@ -91,10 +91,10 @@ void StateMachine::updateState()
 
 autoware_planning_msgs::PathWithLaneId StateMachine::getPath() const
 {
-  return mpdm_ptr_->getPath();
+  return state_obj_ptr_->getPath();
 }
 
-Status StateMachine::getStatus() const { return mpdm_ptr_->getStatus(); }
+Status StateMachine::getStatus() const { return state_obj_ptr_->getStatus(); }
 DebugData StateMachine::getDebugData() const { return mpdm_ptr_->getDebugData(); }
 //DebugData StateMachine::getDebugData() const { return state_obj_ptr_->getDebugData(); }
 State StateMachine::getState() const { return state_obj_ptr_->getCurrentState(); }
