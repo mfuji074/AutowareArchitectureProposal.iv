@@ -28,19 +28,20 @@ private:
     const lanelet::ConstLanelets & target_lanes,
     const autoware_perception_msgs::DynamicObjectArray::ConstPtr & dynamic_objects,
     const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
-    const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path);
+    const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path, std::vector<double> & costs);
   double runForwardSimulation(
     const autoware_planning_msgs::PathWithLaneId & path, const lanelet::ConstLanelets & current_lanes,
     const lanelet::ConstLanelets & target_lanes,
     const autoware_perception_msgs::DynamicObjectArray::ConstPtr & dynamic_objects,
     const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
-    const LaneChangerParameters & ros_parameters, const bool use_buffer, const double acceleration);
+    const LaneChangerParameters & ros_parameters, const bool use_buffer, const double acceleration, const int path_index);
   double computeCost(
-    const autoware_perception_msgs::PredictedPath & vehicle_predicted_path, const lanelet::ConstLanelets & target_lanes,
+    const autoware_perception_msgs::PredictedPath & vehicle_predicted_path,
+    const lanelet::ConstLanelets & current_lanes,  const lanelet::ConstLanelets & target_lanes,
     const std::vector<size_t> & current_lane_object_indices, const std::vector<size_t> & target_lane_object_indices,
     const autoware_perception_msgs::DynamicObjectArray::ConstPtr & dynamic_objects,
     const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
-    const LaneChangerParameters & ros_parameters, const bool use_buffer);
+    const LaneChangerParameters & ros_parameters, const bool use_buffer, const int path_index);
 
   size_t change_lane_size_;
   State current_state_;
