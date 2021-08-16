@@ -56,6 +56,7 @@ void FollowingLaneState::update()
   lane_change_approved_ = data_manager_ptr_->getLaneChangeApproval();
   force_lane_change_ = data_manager_ptr_->getForceLaneChangeSignal();
 
+  /*
   lanelet::ConstLanelet current_lane;
   const double backward_path_length = ros_parameters_.backward_path_length;
   const double forward_path_length = ros_parameters_.forward_path_length;
@@ -154,6 +155,7 @@ void FollowingLaneState::update()
       }
     }
   }
+  */
 }
 
 State FollowingLaneState::getNextState() const

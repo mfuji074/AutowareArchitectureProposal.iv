@@ -48,8 +48,10 @@ struct LaneChangerParameters
   bool use_predicted_path_outside_lanelet;
   bool use_all_predicted_path;
   double refine_goal_search_radius_range;
-  double mpdm_coefficient_for_efficiency_cost;
-  double mpdm_coefficient_for_safety_cost;
+  double mpdm_coefficient_prepare_length;
+  double mpdm_coefficient_deceleration;
+  double mpdm_coefficient_efficiency;
+  double mpdm_coefficient_safety;
   double mpdm_check_lane_length;
 };
 

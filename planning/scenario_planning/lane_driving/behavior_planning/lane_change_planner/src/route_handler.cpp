@@ -817,7 +817,7 @@ std::vector<LaneChangePath> RouteHandler::getLaneChangePaths(
   // rename parameter
   const double backward_path_length = parameter.backward_path_length;
   const double forward_path_length = parameter.forward_path_length;
-  const double lane_change_prepare_duration = parameter.lane_change_prepare_duration;
+  const double maximum_lane_change_prepare_duration = parameter.lane_change_prepare_duration;
   const double lane_changing_duration = parameter.lane_changing_duration;
   const double minimum_lane_change_length = parameter.minimum_lane_change_length;
   const double minimum_lane_change_velocity = parameter.minimum_lane_change_velocity;
@@ -833,74 +833,83 @@ std::vector<LaneChangePath> RouteHandler::getLaneChangePaths(
   const double target_distance =
     util::getArcLengthToTargetLanelet(original_lanelets, target_lanelets.front(), pose);
 
-  for (double acceleration = 0.0; acceleration >= -maximum_deceleration;
-       acceleration -= acceleration_resolution) {
-    PathWithLaneId reference_path;
-    const double v1 = v0 + acceleration * lane_change_prepare_duration;
-    const double v2 = v1 + acceleration * lane_changing_duration;
+  for (double lane_change_prepare_duration = 1.0;
+       lane_change_prepare_duration <= maximum_lane_change_prepare_duration;
+       lane_change_prepare_duration += 1.0) {
+    for (double acceleration = 1.0; acceleration >= -maximum_deceleration;
+        acceleration -= acceleration_resolution) {
+      PathWithLaneId reference_path;
+      const double v1 = v0 + acceleration * lane_change_prepare_duration;
+      const double v2 = v1 + acceleration * lane_changing_duration;
 
-    // skip if velocity becomes less than zero before finishing lane change
-    if (v2 < 0.0) continue;
+      // skip if velocity becomes less than zero before finishing lane change
+      if (v2 < 0.0) continue;
 
-    // get path on original lanes
-    const double straight_distance = v0 * lane_change_prepare_duration +
-                                     0.5 * acceleration * std::pow(lane_change_prepare_duration, 2);
-    double lane_change_distance =
-      v1 * lane_changing_duration + 0.5 * acceleration * std::pow(lane_changing_duration, 2);
-    lane_change_distance = std::max(lane_change_distance, minimum_lane_change_length);
+      // get path on original lanes
+      const double straight_distance = v0 * lane_change_prepare_duration +
+                                      0.5 * acceleration * std::pow(lane_change_prepare_duration, 2);
+      double lane_change_distance =
+        v1 * lane_changing_duration + 0.5 * acceleration * std::pow(lane_changing_duration, 2);
+      lane_change_distance = std::max(lane_change_distance, minimum_lane_change_length);
 
-    if (straight_distance < target_distance) continue;
+      if (straight_distance < target_distance) continue;
 
-    PathWithLaneId reference_path1;
-    {
-      const double lane_length = lanelet::utils::getLaneletLength2d(original_lanelets);
-      const auto arc_position = lanelet::utils::getArcCoordinates(original_lanelets, pose);
-      const double s_start = arc_position.length - backward_path_length;
-      const double s_end = arc_position.length + straight_distance;
-      reference_path1 = getReferencePath(original_lanelets, s_start, s_end, 0.0, 0.0);
+      PathWithLaneId reference_path1;
+      {
+        const double lane_length = lanelet::utils::getLaneletLength2d(original_lanelets);
+        const auto arc_position = lanelet::utils::getArcCoordinates(original_lanelets, pose);
+        const double s_start = arc_position.length - backward_path_length;
+        const double s_end = arc_position.length + straight_distance;
+        reference_path1 = getReferencePath(original_lanelets, s_start, s_end, 0.0, 0.0);
+      }
+
+      reference_path1.points.back().point.twist.linear.x = std::min(reference_path1.points.back().point.twist.linear.x,
+        std::max(straight_distance / lane_change_prepare_duration, minimum_lane_change_velocity));
+      //for (auto & point : reference_path1.points) {
+      //  point.point.twist.linear.x = std::min(
+      //    point.point.twist.linear.x,
+      //    std::max(straight_distance / lane_change_prepare_duration, minimum_lane_change_velocity));
+      //}
+
+      PathWithLaneId reference_path2;
+      {
+        const double lane_length = lanelet::utils::getLaneletLength2d(target_lanelets);
+        const auto arc_position = lanelet::utils::getArcCoordinates(target_lanelets, pose);
+        const int num = std::abs(getNumLaneToPreferredLane(target_lanelets.back()));
+        double s_start = arc_position.length + straight_distance + lane_change_distance;
+        s_start = std::min(s_start, lane_length - num * minimum_lane_change_length);
+        double s_end = s_start + forward_path_length;
+        s_end = std::min(s_end, lane_length - num * (minimum_lane_change_length + buffer));
+        s_end = std::max(s_end, s_start + std::numeric_limits<double>::epsilon());
+        reference_path2 = getReferencePath(target_lanelets, s_start, s_end, 0.0, 0.0);
+      }
+
+      for (auto & point : reference_path2.points) {
+        point.point.twist.linear.x = std::min(
+          point.point.twist.linear.x,
+          std::max(lane_change_distance / lane_changing_duration, minimum_lane_change_velocity));
+      }
+
+      if (reference_path1.points.empty() || reference_path2.points.empty()) {
+        ROS_ERROR_STREAM("reference path is empty!! something wrong...");
+        continue;
+      }
+
+      LaneChangePath candidate_path;
+      candidate_path.acceleration = acceleration;
+      candidate_path.preparation_length = straight_distance;
+      candidate_path.lane_change_length = lane_change_distance;
+      candidate_path.path = combineReferencePath(reference_path1, reference_path2, 5.0, 2);
+
+      // check candidate path is in lanelet
+      if (!isPathInLanelets(candidate_path.path, original_lanelets, target_lanelets)) continue;
+
+      // set fixed flag
+      for (auto & pt : candidate_path.path.points) {
+        pt.point.type = autoware_planning_msgs::PathPoint::FIXED;
+      }
+      candidate_paths.push_back(candidate_path);
     }
-
-    reference_path1.points.back().point.twist.linear.x = std::min(reference_path1.points.back().point.twist.linear.x,
-      std::max(straight_distance / lane_change_prepare_duration, minimum_lane_change_velocity));
-
-    PathWithLaneId reference_path2;
-    {
-      const double lane_length = lanelet::utils::getLaneletLength2d(target_lanelets);
-      const auto arc_position = lanelet::utils::getArcCoordinates(target_lanelets, pose);
-      const int num = std::abs(getNumLaneToPreferredLane(target_lanelets.back()));
-      double s_start = arc_position.length + straight_distance + lane_change_distance;
-      s_start = std::min(s_start, lane_length - num * minimum_lane_change_length);
-      double s_end = s_start + forward_path_length;
-      s_end = std::min(s_end, lane_length - num * (minimum_lane_change_length + buffer));
-      s_end = std::max(s_end, s_start + std::numeric_limits<double>::epsilon());
-      reference_path2 = getReferencePath(target_lanelets, s_start, s_end, 0.0, 0.0);
-    }
-
-    for (auto & point : reference_path2.points) {
-      point.point.twist.linear.x = std::min(
-        point.point.twist.linear.x,
-        std::max(lane_change_distance / lane_changing_duration, minimum_lane_change_velocity));
-    }
-
-    if (reference_path1.points.empty() || reference_path2.points.empty()) {
-      ROS_ERROR_STREAM("reference path is empty!! something wrong...");
-      continue;
-    }
-
-    LaneChangePath candidate_path;
-    candidate_path.acceleration = acceleration;
-    candidate_path.preparation_length = straight_distance;
-    candidate_path.lane_change_length = lane_change_distance;
-    candidate_path.path = combineReferencePath(reference_path1, reference_path2, 5.0, 2);
-
-    // check candidate path is in lanelet
-    if (!isPathInLanelets(candidate_path.path, original_lanelets, target_lanelets)) continue;
-
-    // set fixed flag
-    for (auto & pt : candidate_path.path.points) {
-      pt.point.type = autoware_planning_msgs::PathPoint::FIXED;
-    }
-    candidate_paths.push_back(candidate_path);
   }
 
   return candidate_paths;

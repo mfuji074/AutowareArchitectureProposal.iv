@@ -54,7 +54,7 @@ void ExecutingLaneChangeState::update()
   current_twist_ = data_manager_ptr_->getCurrentSelfVelocity();
   current_pose_ = data_manager_ptr_->getCurrentSelfPose();
   dynamic_objects_ = data_manager_ptr_->getDynamicObjects();
-
+  /*
   // update path
   {
     lanelet::ConstLanelets lanes;
@@ -68,6 +68,7 @@ void ExecutingLaneChangeState::update()
       lanes, current_pose_, width, height, resolution, ros_parameters_.vehicle_length,
       *route_handler_ptr_);
   }
+  */
 }
 
 State ExecutingLaneChangeState::getNextState() const

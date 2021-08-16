@@ -28,7 +28,7 @@ private:
     const lanelet::ConstLanelets & target_lanes,
     const autoware_perception_msgs::DynamicObjectArray::ConstPtr & dynamic_objects,
     const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
-    const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path, std::vector<double> & costs);
+    const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path);
   double runForwardSimulation(
     const autoware_planning_msgs::PathWithLaneId & path, const lanelet::ConstLanelets & current_lanes,
     const lanelet::ConstLanelets & target_lanes,

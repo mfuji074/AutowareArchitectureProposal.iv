@@ -126,18 +126,39 @@ void MultipolicyDecisionMaking::update()
         ros_parameters_);
       std::vector<LaneChangePath> explored_paths = valid_paths;
       explored_paths.insert(explored_paths.end(), lane_follow_path.begin(), lane_follow_path.end());
-      std::vector<double> path_costs(explored_paths.size(), 0.0);
+
+      /*
+      // add decelerated paths to explored_paths
+      change_lane_size_ *= 2;
+      auto explored_paths_decelerated = explored_paths;
+      geometry_msgs::Twist velocity_max;
+      for (size_t i = 0; i < explored_paths_decelerated.size(); i++) {
+        for (size_t j = 0; j < explored_paths_decelerated[i].path.points.size(); j++) {
+          velocity_max.linear.x = explored_paths_decelerated[i].path.points[j].point.twist.linear.x*0.5;
+          explored_paths_decelerated[i].path.points[j].point.twist = velocity_max;
+        }
+        if (i < explored_paths_decelerated.size()-1) {
+          explored_paths.insert(explored_paths.end()-1, explored_paths_decelerated[i]);
+        } else {
+          explored_paths.insert(explored_paths.end(), explored_paths_decelerated[i]);
+        }
+      }
+      */
 
       // explore best next state
+      ROS_INFO_STREAM("MPDM is exploring paths...");
       LaneChangePath selected_path;
       next_state_ = exploreBestState(explored_paths, current_lanes_, check_lanes, dynamic_objects_, current_pose_.pose,
-                                    current_twist_->twist, ros_parameters_, &selected_path, path_costs);
+                                    current_twist_->twist, ros_parameters_, &selected_path);
       debug_data_.selected_path = selected_path.path;
       status_.lane_change_path = selected_path;
+      status_.lane_follow_path = selected_path.path;
     }
     status_.lane_follow_lane_ids = util::getIds(current_lanes_);
     status_.lane_change_lane_ids = util::getIds(lane_change_lanes_);
   }
+
+  //std::cout << "Goal Pose : " << route_handler_ptr_->getGoalPose() << std::endl;;
 
   // update drivable area
   {
@@ -147,6 +168,14 @@ void MultipolicyDecisionMaking::update()
     status_.lane_change_path.path.drivable_area = util::generateDrivableArea(
       lanes, current_pose_, width, height, resolution, ros_parameters_.vehicle_length,
       *route_handler_ptr_);
+
+    const double width = ros_parameters_.drivable_area_width;
+    const double height = ros_parameters_.drivable_area_height;
+    const double resolution = ros_parameters_.drivable_area_resolution;
+    status_.lane_follow_path.drivable_area = util::generateDrivableArea(
+      current_lanes_, current_pose_, width, height, resolution, ros_parameters_.vehicle_length,
+      *route_handler_ptr_);
+
     if (next_state_ == State::FOLLOWING_LANE)
     {
       status_.lane_change_ready = false;
@@ -171,11 +200,14 @@ State MultipolicyDecisionMaking::exploreBestState(
   const lanelet::ConstLanelets & target_lanes,
   const autoware_perception_msgs::DynamicObjectArray::ConstPtr & dynamic_objects,
   const geometry_msgs::Pose & current_pose, const geometry_msgs::Twist & current_twist,
-  const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path, std::vector<double> & costs)
+  const LaneChangerParameters & ros_parameters, LaneChangePath * selected_path)
 {
   // parameter
+  std::vector<double> path_costs;
   double cost_min = 1.0e10;
-  const double coeff_efficiency = ros_parameters.mpdm_coefficient_for_efficiency_cost;
+  const double coeff_efficiency = ros_parameters.mpdm_coefficient_efficiency;
+  const double coeff_prepare_length = ros_parameters.mpdm_coefficient_prepare_length;
+  const double coeff_deceleration = ros_parameters.mpdm_coefficient_deceleration;
   int path_index = 0;
 
   for (const auto & path : paths) {
@@ -189,11 +221,37 @@ State MultipolicyDecisionMaking::exploreBestState(
     int64_t goal_lane_id = target_lane_ids[target_lane_ids.size()-1];
     autoware_planning_msgs::PathPointWithLaneId pathpointwithlaneid_terminal = path.path.points[path.path.points.size()-1];
     int64_t path_terminal_lane_id = pathpointwithlaneid_terminal.lane_ids[pathpointwithlaneid_terminal.lane_ids.size()-1];
-    double cost_efficiency = coeff_efficiency * (double)std::abs(path_terminal_lane_id - goal_lane_id);
+    double lane_difference = 1.0;
+    if (goal_lane_id == path_terminal_lane_id) {
+      lane_difference = 0.0;
+    }
+    double cost_efficiency = coeff_efficiency * lane_difference +
+                          coeff_deceleration * std::abs(path.acceleration) +
+                          coeff_prepare_length * path.preparation_length;
+
+
+    if (path_index > (change_lane_size_-1)) {
+      ROS_INFO_STREAM(
+        "[LANE FOLLOWING] cost_total : " << std::fixed << std::setprecision(6) << cost_safety + cost_efficiency
+      << ", cost_safety : " << std::fixed << std::setprecision(6) << cost_safety
+      << ", cost_efficiency : " <<  std::fixed << std::setprecision(6) << cost_efficiency
+      << ", lane_difference : " << std::fixed << std::setprecision(1) <<lane_difference //<< ", path_terminal_lane_id : " << path_terminal_lane_id
+      << ", acceleration : " << std::fixed << std::setprecision(2) << path.acceleration
+      << ", preparation_length : " << std::fixed << std::setprecision(4) << path.preparation_length);
+    }
+    else {
+      ROS_INFO_STREAM(
+        "[LANE CHANGING ] cost_total : " << std::fixed << std::setprecision(6) << cost_safety + cost_efficiency
+      << ", cost_safety : " << std::fixed << std::setprecision(6) << cost_safety
+      << ", cost_efficiency : " <<  std::fixed << std::setprecision(6) << cost_efficiency
+      << ", lane_difference : " << std::fixed << std::setprecision(1) <<lane_difference //<< ", path_terminal_lane_id : " << path_terminal_lane_id
+      << ", acceleration : " << std::fixed << std::setprecision(2) << path.acceleration
+      << ", preparation_length : " << std::fixed << std::setprecision(4) << path.preparation_length);
+    }
 
     // cost
     double cost = cost_safety + cost_efficiency;
-    costs[path_index++] += cost;
+    path_costs.push_back(cost);
     if (cost < cost_min) {
       *selected_path = path;
       cost_min = cost;
@@ -202,20 +260,15 @@ State MultipolicyDecisionMaking::exploreBestState(
     debug_data_.mpdm_total_costs.push_back(cost);
     debug_data_.mpdm_safety_costs.push_back(cost_safety);
     debug_data_.mpdm_efficiency_costs.push_back(cost_efficiency);
+    path_index++;
   }
-
-  std::cout << "costs : ";
-  for (auto & item : costs) {
-    std::cout << item << ",  ";
-  }
-  std::cout << std::endl;
 
   if (cost_min < 0.0) {
     return State::FOLLOWING_LANE;
   }
 
-  std::vector<double>::iterator iter = std::min_element(costs.begin(), costs.end());
-  size_t index = std::distance(costs.begin(), iter);
+  std::vector<double>::iterator iter = std::min_element(path_costs.begin(), path_costs.end());
+  size_t index = std::distance(path_costs.begin(), iter);
   if (index > (change_lane_size_-1)) {
     return State::FOLLOWING_LANE;
   } else {
@@ -289,7 +342,7 @@ double MultipolicyDecisionMaking::computeCost(
   const LaneChangerParameters & ros_parameters, const bool use_buffer, const int path_index)
 {
   // parameters
-  const double coeff_safety = ros_parameters.mpdm_coefficient_for_safety_cost;
+  const double coeff_safety = ros_parameters.mpdm_coefficient_safety;
   const double time_resolution = ros_parameters.prediction_time_resolution;
   const double prediction_duration = ros_parameters.prediction_duration;
   const double min_thresh = ros_parameters.min_stop_distance;
@@ -337,20 +390,32 @@ double MultipolicyDecisionMaking::computeCost(
 
         double thresh = min_thresh;
         thresh += buffer;
-          if (path_index > (change_lane_size_-1)) {
-            if (util::checkObjectAtSameLane(
-              obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), current_lanes, check_lane_length,
-              current_lane_check_start_time, current_lane_check_end_time)) {
-              cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
+        if (path_index > (change_lane_size_-1)) {
+          if (util::checkObjectAtSameLane(
+            obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), current_lanes, check_lane_length,
+            current_lane_check_start_time, current_lane_check_end_time)) {
+            if (state_machine::common_functions::isObjectFront(current_pose, obj.state.pose_covariance.pose)) {
+              thresh = util::l2Norm(current_twist.linear) * stop_time;
+            } else {
+              thresh = util::l2Norm(obj.state.twist_covariance.twist.linear) * stop_time;
             }
+            thresh = std::max(thresh, min_thresh);
+            cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
           }
-          else {
-            if (util::checkObjectAtSameLane(
-              obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), target_lanes, check_lane_length,
-              target_lane_check_start_time, target_lane_check_end_time)) {
-              cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
+        }
+        else {
+          if (util::checkObjectAtSameLane(
+            obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), target_lanes, check_lane_length,
+            target_lane_check_start_time, target_lane_check_end_time)) {
+            if (state_machine::common_functions::isObjectFront(current_pose, obj.state.pose_covariance.pose)) {
+              thresh = util::l2Norm(current_twist.linear) * stop_time;
+            } else {
+              thresh = util::l2Norm(obj.state.twist_covariance.twist.linear) * stop_time;
             }
+            thresh = std::max(thresh, min_thresh);
+            cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
           }
+        }
       }
     }
 
@@ -373,6 +438,12 @@ double MultipolicyDecisionMaking::computeCost(
           if (util::checkObjectAtSameLane(
             obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), current_lanes, check_lane_length,
             current_lane_check_start_time, current_lane_check_end_time)) {
+            if (state_machine::common_functions::isObjectFront(current_pose, obj.state.pose_covariance.pose)) {
+              thresh = util::l2Norm(current_twist.linear) * stop_time;
+            } else {
+              thresh = util::l2Norm(obj.state.twist_covariance.twist.linear) * stop_time;
+            }
+            thresh = std::max(thresh, min_thresh);
             cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
           }
         }
@@ -380,6 +451,12 @@ double MultipolicyDecisionMaking::computeCost(
           if (util::checkObjectAtSameLane(
             obj, obj_path, route_handler_ptr_->getRoutingGraphPtr(), target_lanes, check_lane_length,
             target_lane_check_start_time, target_lane_check_end_time)) {
+            if (state_machine::common_functions::isObjectFront(current_pose, obj.state.pose_covariance.pose)) {
+              thresh = util::l2Norm(current_twist.linear) * stop_time;
+            } else {
+              thresh = util::l2Norm(obj.state.twist_covariance.twist.linear) * stop_time;
+            }
+            thresh = std::max(thresh, min_thresh);
             cost_safety += obj_path.confidence*coeff_safety/((distance - thresh)*(distance - thresh));
           }
         }
