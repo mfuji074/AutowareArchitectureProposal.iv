@@ -829,14 +829,15 @@ std::vector<LaneChangePath> RouteHandler::getLaneChangePaths(
 
   constexpr double buffer = 1.0;  // buffer for min_lane_change_length
   const double acceleration_resolution = std::abs(maximum_deceleration) / lane_change_sampling_num;
+  const double lane_change_prepare_duration_resolution = std::abs(maximum_lane_change_prepare_duration) / lane_change_sampling_num;
 
   const double target_distance =
     util::getArcLengthToTargetLanelet(original_lanelets, target_lanelets.front(), pose);
 
-  for (double lane_change_prepare_duration = 1.0;
+  for (double lane_change_prepare_duration = 0.0;
        lane_change_prepare_duration <= maximum_lane_change_prepare_duration;
-       lane_change_prepare_duration += 1.0) {
-    for (double acceleration = 1.0; acceleration >= -maximum_deceleration;
+       lane_change_prepare_duration += lane_change_prepare_duration_resolution) {
+    for (double acceleration = 0.0; acceleration >= -maximum_deceleration;
         acceleration -= acceleration_resolution) {
       PathWithLaneId reference_path;
       const double v1 = v0 + acceleration * lane_change_prepare_duration;

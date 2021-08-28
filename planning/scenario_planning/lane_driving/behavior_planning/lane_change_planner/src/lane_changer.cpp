@@ -71,7 +71,7 @@ void LaneChanger::init()
   pnh_.param("drivable_area_height", parameters.drivable_area_height, 50.0);
   pnh_.param("static_obstacle_velocity_thresh", parameters.static_obstacle_velocity_thresh, 0.1);
   pnh_.param("maximum_deceleration", parameters.maximum_deceleration, 1.0);
-  pnh_.param("lane_change_sampling_num", parameters.lane_change_sampling_num, 20);
+  pnh_.param("lane_change_sampling_num", parameters.lane_change_sampling_num, 1);
   pnh_.param("enable_abort_lane_change", parameters.enable_abort_lane_change, true);
   pnh_.param(
     "enable_collision_check_at_prepare_phase", parameters.enable_collision_check_at_prepare_phase,
@@ -93,8 +93,8 @@ void LaneChanger::init()
   // mpdm parameters
   pnh_.param("mpdm_coefficient_prepare_length", parameters.mpdm_coefficient_prepare_length, 1.0e-7);
   pnh_.param("mpdm_coefficient_deceleration", parameters.mpdm_coefficient_deceleration, 1.0e-4);
-  pnh_.param("mpdm_coefficient_efficiency", parameters.mpdm_coefficient_efficiency, 6.0e-4);//3.0e-3);
-  pnh_.param("mpdm_coefficient_safety", parameters.mpdm_coefficient_safety,1.0);
+  pnh_.param("mpdm_coefficient_efficiency", parameters.mpdm_coefficient_efficiency, 1.0e-2);//3.0e-3);
+  pnh_.param("mpdm_coefficient_safety", parameters.mpdm_coefficient_safety,5.0e-1);
   pnh_.param("mpdm_check_lane_length", parameters.mpdm_check_lane_length, 100.0);
 
   // validation of parameters

@@ -116,15 +116,17 @@ def main(case=0, no_engage=False):
     initial_pose_pub.publish(initial_pose)
     time.sleep(1)
     goal_pub.publish(goal_pose)
+    #time.sleep(1)
+    #initial_twist_pub.publish(initial_twist)
+    time.sleep(1)
+    dummycar_pub.publish(object_info)
 
     if not no_engage:
         time.sleep(3)
         msg = Bool(data=True)
         engage_pub.publish(msg)
-        #initial_twist_pub.publish(initial_twist)
 
-    time.sleep(0.3)
-    dummycar_pub.publish(object_info)
+
 
     if case == 1:
         time.sleep(5)
